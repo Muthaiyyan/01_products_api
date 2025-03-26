@@ -1,14 +1,20 @@
 pipeline {
     agent any
-    
+  
+    environment {
+        DOCKER_IMAGE = "ephrash1/product3_api"
+        DOCKER_TAG = "latest"
+        EKS_CLUSTER_NAME = "ephrash-cluster"
+        KUBECONFIG = credentials('k8s-cred')
+    }
     tools{
-        maven "Maven-3.9.9"
-    }    
+        maven "Maven"
+    }
 
     stages {
-        stage('Git Clone') {
+        stage('Clone Repo') {
             steps {
-               git branch: 'main', url: 'https://github.com/suffixscope/01_products_api.git'
+                git branch: 'main', url: 'https://github.com/Muthaiyyan/01_products_api_Vinod.git'
             }
         }
         stage('Maven Build'){
@@ -18,21 +24,20 @@ pipeline {
         }
         stage('Docker Image'){
             steps{
-             sh 'docker build -t suffixscope/products_api .'
+             sh 'docker build -t ephrash1/product3_api .'
             }
         }
-        stage('Docker Image push'){
-            steps
-            withCredentials([string(credentialsId: 'docker_pwd', variable: 'docker_pwd')]) {
-                   sh 'docker login -u suffixscope -p ${docker_pwd}'
-                   sh 'docker push suffixscope/products_api'
-            }
+        stage('Push Docker Image') {
+            steps {
+                withDockerRegistry([credentialsId: 'docker-hub-credentials', url: '']) {
+                    sh 'docker push $DOCKER_IMAGE:$DOCKER_TAG'
+                }
             }
         }
-        stage('k8s deployment'){
-            steps{
-             sh 'kubectl apply -f Deployment.yml'
+        stage('Deploy to Kubernetes (Using Local Deployment YAML)') {
+            steps {
+                sh "kubectl apply -f /var/lib/jenkins/workspace/Project3BE/Deployment.yaml"
             }
-        }        
+        }
     }
-}
+ }
